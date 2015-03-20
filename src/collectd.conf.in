@@ -1341,13 +1341,19 @@
 #</Plugin>
 
 #<Plugin write_tsdb>
-#	<Node>
-#		Host "localhost"
-#		Port "4242"
-#		HostTags "status=production"
-#		StoreRates false
-#		AlwaysAppendDS false
-#	</Node>
+#       <Node "TSDB_SERVER_01">
+#               URL "http://localhost:4242/api/put?details"
+#               DataFormat "TAGS"
+#               SendFormat "HTTP"
+#               BufferSize 4096
+#               <Tags>
+#                       "foo" "bar"
+#                       "abc" "123"
+#               </Tags>
+#               StoreRates false
+#               AlwaysAppendDS true
+#               ReplaceChar "_"
+#               </Node>
 #</Plugin>
 
 #<Plugin zookeeper>

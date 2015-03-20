@@ -6849,18 +6849,26 @@ more than one DS.
 The C<write_tsdb> plugin writes data to I<OpenTSDB>, a scalable open-source
 time series database. The plugin connects to a I<TSD>, a masterless, no shared
 state daemon that ingests metrics and stores them in HBase. The plugin uses
-I<TCP> over the "line based" protocol with a default port 4242. The data will
-be sent in blocks of at most 1428 bytes to minimize the number of network
-packets.
+I<TCP> over the "http" or "line based" protocol with a default port 4242.
+The data will be sent in blocks of at most 1428 bytes to minimize the number
+of network packets.
 
 Synopsis:
 
  <Plugin write_tsdb>
-   <Node "example">
-     Host "tsd-1.my.domain"
-     Port "4242"
-     HostTags "status=production"
-   </Node>
+        <Node "TSDB_SERVER_01">
+                URL "http://localhost:4242/api/put?details"
+                DataFormat "TAGS"
+                SendFormat "HTTP"
+                BufferSize 4096
+                <Tags>
+                        "foo" "bar"
+                        "abc" "123"
+                </Tags>
+                StoreRates false
+                AlwaysAppendDS true
+                ReplaceChar "_"
+                </Node>
  </Plugin>
 
 The configuration consists of one or more E<lt>B<Node>E<nbsp>I<Name>E<gt>
@@ -6868,20 +6876,65 @@ blocks. Inside the B<Node> blocks, the following options are recognized:
 
 =over 4
 
-=item B<Host> I<Address>
+=item B<URL> I<URI Address>
 
-Hostname or address to connect to. Defaults to C<localhost>.
+Hostname or address to connect to. Defaults to C<http://localhost:4242/api/put>.
+Acceptable protocols = [http, raw]
 
-=item B<Port> I<Service>
+=item B<DataFormat> I<TAGS>|<GRAPHITE>
 
-Service name or port number to connect to. Defaults to C<4242>.
+Sets the data format which is sent to TSDB. Defaults to C<TAGS>.
+EXAMPLE (GRAPHITE):
+{
+  "metric": "cpu.1.cpu.nice.value",
+  "timestamp": 1346846400,
+  "value": 18,
+  "tags": {
+     "host": "web01",
+     "foo": "bar"
+     "abc": "123"
+  }
+}
+EXAMPLE (TAGS):
+{
+  "metric": "cpu",
+  "timestamp": 1346846400,
+  "value": 18,
+  "tags": {
+     "host": "web01",
+     "foo": "bar",
+     "abc": "123",
+     "plugin": "cpu",
+     "plugin_instance": "1",
+     "type": "cpu",
+     "type_instance": "nice",
+     "dstypes": "derive",
+     "dsnames": "value"
+  }
+}
 
+=item B<SendFormat> I<HTTP>|<PUT>
 
-=item B<HostTags> I<String>
+Sets the send format in which to post data to TSDB. Defaults to C<HTTP>.
+HTTP uses the standard curl http POST syntax, while PUT will send a raw
+'put' record to the TSDB server.
 
-When set, I<HostTags> is added to the end of the metric. It is intended to be
-used for name=value pairs that the TSD will tag the metric with. Dots and
-whitespace are I<not> escaped in this string.
+=item B<BufferSize> I<Bytes>
+
+Sets the send buffer size to I<Bytes>. By increasing this buffer, less HTTP
+requests will be generated, but more metrics will be batched / metrics are
+cached for longer before being sent, introducing additional delay until they
+are available on the server side. I<Bytes> must be at least 1024 and cannot
+exceed the size of an C<int>, i.e. 2E<nbsp>GByte.
+Defaults to C<4096>.
+
+=item B<Tags> I<key/value>
+
+Combination for I<key/value> pairs that will be appended to the tags generated
+by the metric. Please note that packaged versions of openTSDB limit the number
+of tags to B<8>. More the 8 tags will cause the record to be B<rejected>. If
+compiled from source, this value can be set higher. B<32> tags is the current
+limit for this plugin.
 
 =item B<StoreRates> B<false>|B<true>
 
@@ -6891,9 +6944,16 @@ integer number.
 
 =item B<AlwaysAppendDS> B<false>|B<true>
 
-If set the B<true>, append the name of the I<Data Source> (DS) to the "metric"
-identifier. If set to B<false> (the default), this is only done when there is
-more than one DS.
+If set the B<true>, append the type and name of the I<Data Source> (DS) to
+the "metric" identifier. If set to B<false> (the default), this is only done
+when there is more than one DS. DS is type of 'value' is always ignored.
+
+=item B<ReplaceChar> B<char>
+
+Defines the single character replacement which is used to cleanse names
+and values before they are sent to TSDB. Any character matching the following
+will be replaced with this character. Default is C<_>.
+FORBIDDEN " \t\"\\:!/()\n\r"
 
 =back
 
