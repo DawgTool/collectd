@@ -1211,7 +1211,7 @@ if BUILD_PLUGIN_WRITE_TSDB
 pkglib_LTLIBRARIES += write_tsdb.la
 write_tsdb_la_SOURCES = write_tsdb.c \
                         utils_format_tsdb.c utils_format_tsdb.h
-write_tsdb_la_LDFLAGS = $(PLUGIN_LDFLAGS
+write_tsdb_la_LDFLAGS = $(PLUGIN_LDFLAGS)
 write_tsdb_la_CFLAGS = $(AM_CFLAGS)
 write_tsdb_la_LIBADD =
 if BUILD_WITH_LIBCURL
